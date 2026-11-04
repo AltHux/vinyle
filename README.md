@@ -52,3 +52,11 @@ Okładki: można wkleić adres obrazka przy albumie lub wydaniu. Płyty bez okł
 6. **Wdrożenie** – np. VPS/Fly.io z trwałym wolumenem na SQLite albo migracja na Postgres (Prisma/Drizzle) przy większym ruchu.
 
 Dane przykładowe służą do demonstracji; numery katalogowe są wpisane tylko tam, gdzie były pewne.
+
+## Wdrożenie
+
+Aplikacja buduje się do obrazu Dockera (`Dockerfile`, tryb `standalone`). Baza SQLite leży w `/data/vinyle.db`,
+więc hosting musi zapewnić trwały dysk zamontowany w `/data`.
+
+- **Fly.io** (`fly.toml`): `fly launch --copy-config --no-deploy`, `fly volumes create vinyle_data --size 1 --region waw`, `fly deploy`.
+- **Render** (`render.yaml`): New → Blueprint i wskazanie repozytorium. Trwały dysk wymaga płatnego planu Starter.

@@ -1,0 +1,14 @@
+# Render: New > Blueprint, wskaż to repozytorium
+services:
+  - type: web
+    name: vinyle
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    envVars:
+      - key: VINYLE_DB
+        value: /data/vinyle.db
+    disk:
+      name: vinyle-data
+      mountPath: /data
+      sizeGB: 1
