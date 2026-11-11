@@ -20,6 +20,7 @@ export function ActionForm({
     <form action={formAction} className={className}>
       {children}
       {state?.error && <p className="error">{state.error}</p>}
+      {state?.ok && <p className="ok">{state.ok}</p>}
       <button className="btn" disabled={pending}>{pending ? 'Zapisywanie…' : submit}</button>
     </form>
   );

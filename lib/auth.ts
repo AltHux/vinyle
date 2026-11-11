@@ -5,13 +5,13 @@ import { db } from './db';
 
 const COOKIE = 'vinyle_session';
 
-export type User = { id: number; username: string };
+export type User = { id: number; username: string; avatar: string | null };
 
 export async function currentUser(): Promise<User | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const row = db
-    .prepare('SELECT u.id, u.username FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?')
+    .prepare('SELECT u.id, u.username, u.avatar FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?')
     .get(token) as User | undefined;
   return row ?? null;
 }
@@ -32,6 +32,12 @@ export async function startSession(userId: number) {
     maxAge: 60 * 60 * 24 * 30,
     secure: process.env.NODE_ENV === 'production',
   });
+}
+
+/** Wylogowuje ze wszystkich urządzeń (np. po zmianie hasła), opcjonalnie poza bieżącą sesją. */
+export async function endOtherSessions(userId: number) {
+  const token = (await cookies()).get(COOKIE)?.value ?? '';
+  db.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').run(userId, token);
 }
 
 export async function endSession() {

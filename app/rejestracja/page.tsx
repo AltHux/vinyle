@@ -1,21 +1,21 @@
 import Link from 'next/link';
-import { ActionForm } from '@/components/ActionForm';
-import { register } from '@/app/actions';
+import { redirect } from 'next/navigation';
+import { RegisterForm } from '@/components/RegisterForm';
+import { MIN_AGE } from '@/lib/account';
+import { currentUser } from '@/lib/auth';
 
 export const metadata = { title: 'Załóż konto' };
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const { next = '/polka' } = await searchParams;
+export default async function Page() {
+  if (await currentUser()) redirect('/profil');
+  const d = new Date();
+  d.setUTCFullYear(d.getUTCFullYear() - MIN_AGE);
   return (
     <div className="auth panel">
       <h1>Załóż konto</h1>
-      
-      <ActionForm action={register} submit="Załóż konto">
-        <input type="hidden" name="next" value={next} />
-        <div className="field"><label htmlFor="username">Nazwa użytkownika</label><input id="username" name="username" autoComplete="username" required /></div>
-        <div className="field"><label htmlFor="password">Hasło</label><input id="password" name="password" type="password" autoComplete="new-password" required /></div>
-      </ActionForm>
-      <p className="small">Masz już konto? <Link href={`/logowanie?next=${encodeURIComponent(next)}`} style={{ color: "var(--accent)" }}>Zaloguj się</Link>.</p>
+      <p className="muted small">Po rejestracji wyślemy Ci mail z linkiem do potwierdzenia adresu.</p>
+      <RegisterForm minAge={MIN_AGE} maxBirth={d.toISOString().slice(0, 10)} />
+      <p className="small">Masz już konto? <Link href="/logowanie" style={{ color: 'var(--accent)' }}>Zaloguj się</Link>.</p>
     </div>
   );
 }

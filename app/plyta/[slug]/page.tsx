@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { db, STATUS_LABEL, type Status } from '@/lib/db';
 import { currentUser } from '@/lib/auth';
 import { Cover } from '@/components/Cover';
+import { Avatar } from '@/components/Avatar';
 import { ActionForm } from '@/components/ActionForm';
 import { addRelease, saveShelf, setCover, toggleRelease } from '@/app/actions';
 
@@ -52,10 +53,10 @@ export default async function AlbumPage({ params }: { params: Promise<{ slug: st
     .get(album.id) as { avg: number | null; ratings: number; mam: number | null; chce: number | null; sluchalem: number | null };
   const reviews = db
     .prepare(
-      `SELECT u.username, s.rating, s.review, s.status, s.updated_at FROM shelf s JOIN users u ON u.id = s.user_id
+      `SELECT u.username, u.avatar, s.rating, s.review, s.status, s.updated_at FROM shelf s JOIN users u ON u.id = s.user_id
        WHERE s.album_id = ? AND s.review IS NOT NULL ORDER BY s.updated_at DESC`,
     )
-    .all(album.id) as { username: string; rating: number | null; review: string; status: Status | null; updated_at: string }[];
+    .all(album.id) as { username: string; avatar: string | null; rating: number | null; review: string; status: Status | null; updated_at: string }[];
 
   const mine = user
     ? (db.prepare('SELECT status, rating, review FROM shelf WHERE user_id = ? AND album_id = ?').get(user.id, album.id) as
@@ -244,7 +245,9 @@ export default async function AlbumPage({ params }: { params: Promise<{ slug: st
           {reviews.map((r) => (
             <div key={r.username} className="review">
               <div className="review-head">
-                <Link href={`/u/${r.username}`}><strong>{r.username}</strong></Link>
+                <Link href={`/u/${r.username}`} className="who">
+                  <Avatar username={r.username} avatar={r.avatar} size={28} /> <strong>{r.username}</strong>
+                </Link>
                 {r.rating && <span className="rating">★ {r.rating}/10</span>}
                 {r.status && <span className={`tag tag-${r.status}`}>{STATUS_LABEL[r.status]}</span>}
                 <span className="muted small">{r.updated_at.slice(0, 10)}</span>

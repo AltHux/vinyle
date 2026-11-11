@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ALBUM_CARD_SQL, db, STATUS_LABEL, type AlbumCard, type Status } from '@/lib/db';
 import { currentUser } from '@/lib/auth';
 import { AlbumGrid } from '@/components/AlbumGrid';
+import { Avatar } from '@/components/Avatar';
 
 type Row = AlbumCard & { status: Status | null; my_rating: number | null; pressings: string | null };
 
@@ -25,8 +26,8 @@ export default async function UserShelf({
   searchParams: Promise<{ p?: string }>;
 }) {
   const username = decodeURIComponent((await params).username);
-  const owner = db.prepare('SELECT id, username, created_at FROM users WHERE username = ?').get(username) as
-    | { id: number; username: string; created_at: string }
+  const owner = db.prepare('SELECT id, username, created_at, avatar, bio FROM users WHERE username = ?').get(username) as
+    | { id: number; username: string; created_at: string; avatar: string | null; bio: string | null }
     | undefined;
   if (!owner) notFound();
   const me = await currentUser();
@@ -57,11 +58,18 @@ export default async function UserShelf({
 
   return (
     <>
-      <h1>{isMe ? 'Moja półka' : `Półka użytkownika ${owner.username}`}</h1>
-      <p className="muted">
-        {owner.username} · w Vinyle od {owner.created_at.slice(0, 10)}
-        {isMe && <> · <Link href={`/u/${owner.username}`} style={{ color: 'var(--accent)' }}>link do udostępnienia</Link></>}
-      </p>
+      <div className="profile-head user-head">
+        <Avatar username={owner.username} avatar={owner.avatar} size={88} />
+        <div>
+          <h1 style={{ margin: 0 }}>{isMe ? 'Moja półka' : `Półka użytkownika ${owner.username}`}</h1>
+          <p className="muted" style={{ margin: '4px 0' }}>
+            {owner.username} · w Vinyle od {owner.created_at.slice(0, 10)}
+            {isMe && <> · <Link href={`/u/${owner.username}`} style={{ color: 'var(--accent)' }}>link do udostępnienia</Link></>}
+            {isMe && <> · <Link href="/profil" style={{ color: 'var(--accent)' }}>edytuj profil</Link></>}
+          </p>
+          {owner.bio && <p className="bio">{owner.bio}</p>}
+        </div>
+      </div>
       <nav className="tabs">
         {TABS.map(([k, label]) => (
           <Link key={k} href={`/u/${owner.username}?p=${k}`} className={tab === k ? 'active' : ''}>
