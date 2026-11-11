@@ -40,3 +40,10 @@ export async function endSession() {
   if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
   jar.delete(COOKIE);
 }
+
+/** Administratorzy to nazwy użytkowników z ADMIN_USERS (po przecinku). */
+export function isAdmin(user: User | null) {
+  if (!user) return false;
+  const admins = (process.env.ADMIN_USERS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  return admins.includes(user.username.toLowerCase());
+}

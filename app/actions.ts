@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { db, uniqueSlug, type Status } from '@/lib/db';
-import { currentUser, endSession, requireUser, startSession } from '@/lib/auth';
+import { currentUser, endSession, isAdmin, requireUser, startSession } from '@/lib/auth';
+import type { ImportParams } from '@/lib/discogs';
 import { hashPassword, verifyPassword } from '@/lib/password';
 
 export type FormState = { error?: string } | undefined;
@@ -207,4 +208,44 @@ export async function setCover(fd: FormData) {
   if (url && !/^https?:\/\//.test(url)) return;
   db.prepare('UPDATE albums SET cover_url = ? WHERE id = ?').run(url, albumId);
   revalidatePath('/', 'layout');
+}
+
+// ---------- Import z Discogs (tylko administratorzy) ----------
+
+export async function startDiscogsImport(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await currentUser();
+  if (!isAdmin(user)) return { error: 'Import jest dostępny tylko dla administratorów.' };
+  const { startImport, parseMasterIds } = await import('@/lib/discogs');
+  let params: ImportParams;
+  if (str(fd, 'mode') === 'ids') {
+    const ids = parseMasterIds(str(fd, 'ids'));
+    if (ids.length === 0) return { error: 'Wklej linki do masterów z Discogs (discogs.com/master/…) albo ich numery.' };
+    if (ids.length > 500) return { error: 'Maksymalnie 500 płyt naraz.' };
+    params = { mode: 'ids', ids };
+  } else {
+    const limit = Math.min(Math.max(optInt(fd, 'limit') ?? 50, 1), 500);
+    params = {
+      mode: 'search', limit,
+      genre: optStr(fd, 'genre') ?? undefined, style: optStr(fd, 'style') ?? undefined,
+      country: optStr(fd, 'country') ?? undefined,
+      yearFrom: optInt(fd, 'year_from') ?? undefined, yearTo: optInt(fd, 'year_to') ?? undefined,
+    };
+    if (!params.genre && !params.style && !params.country) return { error: 'Wybierz gatunek, styl albo kraj.' };
+  }
+  try {
+    startImport(params, user!.id);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  revalidatePath('/admin/import');
+  return undefined;
+}
+
+export async function stopDiscogsImport(fd: FormData) {
+  const user = await currentUser();
+  if (!isAdmin(user)) return;
+  const { stopImport } = await import('@/lib/discogs');
+  const id = optInt(fd, 'job_id');
+  if (id) stopImport(id);
+  revalidatePath('/admin/import');
 }

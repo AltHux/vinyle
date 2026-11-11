@@ -89,6 +89,32 @@ CREATE INDEX IF NOT EXISTS idx_releases_album ON releases(album_id);
 CREATE INDEX IF NOT EXISTS idx_shelf_album ON shelf(album_id);
 `;
 
+// Kolumny dodane po pierwszym wdrożeniu; CREATE TABLE IF NOT EXISTS ich nie doda do istniejącej bazy
+function migrate(db: Database.Database) {
+  const has = (table: string, col: string) =>
+    (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === col);
+  if (!has('albums', 'discogs_master_id')) db.exec('ALTER TABLE albums ADD COLUMN discogs_master_id INTEGER');
+  if (!has('releases', 'discogs_release_id')) db.exec('ALTER TABLE releases ADD COLUMN discogs_release_id INTEGER');
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_albums_discogs ON albums(discogs_master_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_releases_discogs ON releases(discogs_release_id);
+    CREATE TABLE IF NOT EXISTS import_jobs (
+      id INTEGER PRIMARY KEY,
+      params TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'done', 'failed', 'stopped')),
+      total INTEGER NOT NULL DEFAULT 0,
+      imported INTEGER NOT NULL DEFAULT 0,
+      skipped INTEGER NOT NULL DEFAULT 0,
+      log TEXT NOT NULL DEFAULT '',
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      finished_at TEXT
+    );
+    -- Import przerwany restartem serwera nie wznowi się sam
+    UPDATE import_jobs SET status = 'stopped', finished_at = CURRENT_TIMESTAMP WHERE status = 'running';
+  `);
+}
+
 function open() {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const db = new Database(DB_PATH);
@@ -96,6 +122,7 @@ function open() {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+  migrate(db);
   // Kilka procesów (np. workery buildu) może startować równocześnie, więc sprawdzamy w transakcji z blokadą
   db.transaction(() => {
     const { n } = db.prepare('SELECT COUNT(*) AS n FROM genres').get() as { n: number };

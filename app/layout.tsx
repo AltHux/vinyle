@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { currentUser } from '@/lib/auth';
+import { currentUser, isAdmin } from '@/lib/auth';
 import { logout } from './actions';
 import './globals.css';
 
@@ -30,6 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {user ? (
                 <>
                   <Link href="/polka">Moja półka</Link>
+                  {isAdmin(user) && <Link href="/admin/import">Import</Link>}
                   <Link href="/dodaj" className="btn btn-small">+ Dodaj płytę</Link>
                   <form action={logout}>
                     <button className="linkish" title={`Zalogowany jako ${user.username}`}>Wyloguj</button>
@@ -45,7 +46,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </header>
         <main className="wrap">{children}</main>
-        <footer className="wrap footer">Vinyle · baza płyt winylowych tworzona przez kolekcjonerów</footer>
+        <footer className="wrap footer">
+          Vinyle · baza płyt winylowych tworzona przez kolekcjonerów. Część danych i okładek pochodzi z{' '}
+          <a href="https://www.discogs.com" target="_blank" rel="noreferrer">Discogs</a>. Vinyle używa Discogs API, ale nie jest
+          powiązane z Discogs ani przez nie wspierane.
+        </footer>
       </body>
     </html>
   );

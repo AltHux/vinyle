@@ -60,3 +60,16 @@ więc hosting musi zapewnić trwały dysk zamontowany w `/data`.
 
 - **Fly.io** (`fly.toml`): `fly launch --copy-config --no-deploy`, `fly volumes create vinyle_data --size 1 --region waw`, `fly deploy`.
 - **Render** (`render.yaml`): New → Blueprint i wskazanie repozytorium. Trwały dysk wymaga płatnego planu Starter.
+
+## Import z Discogs
+
+Panel `/admin/import` (widoczny tylko dla użytkowników z `ADMIN_USERS`) importuje albumy (mastery) z Discogs razem z
+wydaniami winylowymi, okładką, gatunkami i listą utworów. Można wybrać gatunek, styl, kraj i lata (bierze najpopularniejsze
+płyty, których jeszcze nie ma w bazie) albo wkleić linki `discogs.com/master/…`. Płyty już obecne w bazie są uzupełniane, a nie dublowane.
+
+Zmienne środowiskowe:
+
+- `DISCOGS_TOKEN` – osobisty token z https://www.discogs.com/settings/developers
+- `ADMIN_USERS` – nazwy użytkowników z dostępem do panelu, po przecinku
+
+Import działa w tle w procesie serwera (ok. 60 zapytań na minutę, 2 na płytę). Restart serwera, np. nowe wdrożenie, przerywa trwający import.
