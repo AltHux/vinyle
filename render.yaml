@@ -8,6 +8,8 @@ services:
     envVars:
       - key: VINYLE_DB
         value: /data/vinyle.db
+      - key: HOSTNAME
+        value: 0.0.0.0
     disk:
       name: vinyle-data
       mountPath: /data
