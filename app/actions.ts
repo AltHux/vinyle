@@ -223,7 +223,14 @@ export async function startDiscogsImport(_: FormState, fd: FormData): Promise<Fo
     if (ids.length > 500) return { error: 'Maksymalnie 500 płyt naraz.' };
     params = { mode: 'ids', ids };
   } else {
-    const limit = Math.min(Math.max(optInt(fd, 'limit') ?? 50, 1), 500);
+    const limit = Math.min(Math.max(optInt(fd, 'limit') ?? 50, 1), 2000);
+    const common = {
+      limit, country: optStr(fd, 'country') ?? undefined,
+      yearFrom: optInt(fd, 'year_from') ?? undefined, yearTo: optInt(fd, 'year_to') ?? undefined,
+    };
+    if (str(fd, 'genre') === '__all__') {
+      params = { mode: 'all', ...common };
+    } else {
     params = {
       mode: 'search', limit,
       genre: optStr(fd, 'genre') ?? undefined, style: optStr(fd, 'style') ?? undefined,
@@ -231,6 +238,7 @@ export async function startDiscogsImport(_: FormState, fd: FormData): Promise<Fo
       yearFrom: optInt(fd, 'year_from') ?? undefined, yearTo: optInt(fd, 'year_to') ?? undefined,
     };
     if (!params.genre && !params.style && !params.country) return { error: 'Wybierz gatunek, styl albo kraj.' };
+    }
   }
   try {
     startImport(params, user!.id);

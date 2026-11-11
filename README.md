@@ -64,7 +64,7 @@ więc hosting musi zapewnić trwały dysk zamontowany w `/data`.
 ## Import z Discogs
 
 Panel `/admin/import` (widoczny tylko dla użytkowników z `ADMIN_USERS`) importuje albumy (mastery) z Discogs razem z
-wydaniami winylowymi, okładką, gatunkami i listą utworów. Można wybrać gatunek, styl, kraj i lata (bierze najpopularniejsze
+wydaniami winylowymi, okładką, gatunkami i listą utworów. Można wybrać gatunek (lub wszystkie po kolei), styl, kraj i lata (bierze najpopularniejsze
 płyty, których jeszcze nie ma w bazie) albo wkleić linki `discogs.com/master/…`. Płyty już obecne w bazie są uzupełniane, a nie dublowane.
 
 Zmienne środowiskowe:

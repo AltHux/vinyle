@@ -5,7 +5,7 @@ import { db, slugify, uniqueSlug } from './db';
 
 const API = process.env.DISCOGS_API ?? 'https://api.discogs.com';
 const DELAY_MS = Number(process.env.DISCOGS_DELAY_MS ?? 1100);
-const MAX_VERSIONS = 40;
+const MAX_VERSIONS = 100;
 
 export const DISCOGS_GENRES = [
   'Rock', 'Electronic', 'Pop', 'Jazz', 'Funk / Soul', 'Hip Hop', 'Classical', 'Reggae',
@@ -34,6 +34,8 @@ const STYLE_MAP: [RegExp, [string, string]][] = [
 
 export type ImportParams =
   | { mode: 'search'; genre?: string; style?: string; country?: string; yearFrom?: number; yearTo?: number; limit: number }
+  // Po kolei każdy gatunek z DISCOGS_GENRES, do `limit` nowych płyt w każdym
+  | { mode: 'all'; country?: string; yearFrom?: number; yearTo?: number; limit: number }
   | { mode: 'ids'; ids: number[] };
 
 type Master = {
@@ -175,7 +177,7 @@ async function importMaster(jobId: number, masterId: number, userId: number) {
   return created;
 }
 
-async function* searchMasters(p: Extract<ImportParams, { mode: 'search' }>) {
+async function* searchMasters(p: Omit<Extract<ImportParams, { mode: 'search' }>, 'mode'>) {
   const q = new URLSearchParams({ type: 'master', format: 'Vinyl', per_page: '100', sort: 'have', sort_order: 'desc' });
   if (p.genre) q.set('genre', p.genre);
   if (p.style) q.set('style', p.style);
@@ -199,7 +201,7 @@ export function startImport(params: ImportParams, userId: number) {
   const running = db.prepare("SELECT id FROM import_jobs WHERE status = 'running'").get();
   if (running) throw new Error('Inny import jeszcze trwa. Poczekaj, aż się skończy, albo go zatrzymaj.');
   if (!process.env.DISCOGS_TOKEN) throw new Error('Brak zmiennej DISCOGS_TOKEN na serwerze. Dodaj ją w ustawieniach Render.');
-  const total = params.mode === 'ids' ? params.ids.length : params.limit;
+  const total = params.mode === 'ids' ? params.ids.length : params.mode === 'all' ? params.limit * DISCOGS_GENRES.length : params.limit;
   const jobId = Number(
     db.prepare('INSERT INTO import_jobs (params, total, created_by) VALUES (?, ?, ?)').run(JSON.stringify(params), total, userId).lastInsertRowid,
   );
@@ -208,27 +210,42 @@ export function startImport(params: ImportParams, userId: number) {
     const seen = new Set<number>();
     const known = db.prepare('SELECT 1 FROM albums WHERE discogs_master_id = ?');
     const bump = (col: 'imported' | 'skipped') => db.prepare(`UPDATE import_jobs SET ${col} = ${col} + 1 WHERE id = ?`).run(jobId);
-    try {
-      const ids = params.mode === 'ids' ? params.ids : searchMasters(params);
+    const stopped = () => {
+      if (!stopRequested.has(jobId)) return false;
+      db.prepare("UPDATE import_jobs SET status = 'stopped', finished_at = CURRENT_TIMESTAMP WHERE id = ?").run(jobId);
+      return true;
+    };
+    // Importuje płyty z listy lub wyszukiwania, aż przybędzie `limit` nowych; zwraca false po zatrzymaniu
+    const run = async (ids: Iterable<number> | AsyncIterable<number>, limit: number, skipKnown: boolean) => {
+      let added = 0;
       for await (const id of ids) {
-        if (stopRequested.has(jobId)) {
-          db.prepare("UPDATE import_jobs SET status = 'stopped', finished_at = CURRENT_TIMESTAMP WHERE id = ?").run(jobId);
-          return;
-        }
+        if (stopped()) return false;
         if (seen.has(id)) continue;
         seen.add(id);
-        // W trybie wyszukiwania pomijamy płyty, które już są, żeby limit dotyczył nowych
-        if (params.mode === 'search' && known.get(id)) continue;
+        // W wyszukiwaniu pomijamy płyty, które już są, żeby limit dotyczył nowych
+        if (skipKnown && known.get(id)) continue;
         try {
-          bump((await importMaster(jobId, id, userId)) ? 'imported' : 'skipped');
+          const created = await importMaster(jobId, id, userId);
+          bump(created ? 'imported' : 'skipped');
+          if (created) added++;
         } catch (e) {
           if (e instanceof Error && /token|DISCOGS_TOKEN/.test(e.message)) throw e;
           log(jobId, `! master ${id}: ${(e as Error).message}`);
           bump('skipped');
         }
-        if (params.mode === 'search') {
-          const { imported } = db.prepare('SELECT imported FROM import_jobs WHERE id = ?').get(jobId) as { imported: number };
-          if (imported >= params.limit) break;
+        if (added >= limit) break;
+      }
+      return true;
+    };
+    try {
+      if (params.mode === 'ids') {
+        if (!(await run(params.ids, Infinity, false))) return;
+      } else if (params.mode === 'search') {
+        if (!(await run(searchMasters(params), params.limit, true))) return;
+      } else {
+        for (const genre of DISCOGS_GENRES) {
+          log(jobId, `== ${genre}`);
+          if (!(await run(searchMasters({ ...params, genre }), params.limit, true))) return;
         }
       }
       db.prepare("UPDATE import_jobs SET status = 'done', finished_at = CURRENT_TIMESTAMP WHERE id = ?").run(jobId);

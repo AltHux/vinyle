@@ -16,6 +16,7 @@ const STATUS: Record<string, string> = { running: 'trwa', done: 'zakończony', f
 
 function describe(p: { mode: string; genre?: string; style?: string; country?: string; yearFrom?: number; yearTo?: number; limit?: number; ids?: number[] }) {
   if (p.mode === 'ids') return `${p.ids?.length} wskazanych płyt`;
+  if (p.mode === 'all') return `Wszystkie gatunki · do ${p.limit} nowych w każdym`;
   const years = p.yearFrom || p.yearTo ? `${p.yearFrom ?? '…'}–${p.yearTo ?? '…'}` : null;
   return [p.genre, p.style, p.country, years].filter(Boolean).join(' · ') + ` · do ${p.limit} nowych`;
 }
@@ -52,6 +53,7 @@ export default async function ImportPage() {
               <label htmlFor="genre">Gatunek</label>
               <select id="genre" name="genre" defaultValue="">
                 <option value="">— dowolny —</option>
+                <option value="__all__">Wszystkie gatunki po kolei</option>
                 {DISCOGS_GENRES.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
@@ -61,7 +63,7 @@ export default async function ImportPage() {
           <div className="row">
             <div className="field"><label htmlFor="year_from">Rok od</label><input id="year_from" name="year_from" type="number" min="1900" max="2100" /></div>
             <div className="field"><label htmlFor="year_to">Rok do</label><input id="year_to" name="year_to" type="number" min="1900" max="2100" /></div>
-            <div className="field"><label htmlFor="limit">Ile nowych płyt</label><input id="limit" name="limit" type="number" min="1" max="500" defaultValue={50} /></div>
+            <div className="field"><label htmlFor="limit">Ile nowych płyt (przy „wszystkich” na gatunek)</label><input id="limit" name="limit" type="number" min="1" max="2000" defaultValue={50} /></div>
           </div>
         </ActionForm>
       </div>
