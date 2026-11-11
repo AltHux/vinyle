@@ -121,10 +121,11 @@ function open() {
   db.pragma('busy_timeout = 5000');
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
-  db.exec(SCHEMA);
-  migrate(db);
-  // Kilka procesów (np. workery buildu) może startować równocześnie, więc sprawdzamy w transakcji z blokadą
+  // Kilka procesów (np. workery buildu) może startować równocześnie na tej samej bazie,
+  // więc schemat, migracje i dane startowe idą w jednej transakcji z blokadą zapisu
   db.transaction(() => {
+    db.exec(SCHEMA);
+    migrate(db);
     const { n } = db.prepare('SELECT COUNT(*) AS n FROM genres').get() as { n: number };
     if (n === 0) seed(db);
   }).immediate();
