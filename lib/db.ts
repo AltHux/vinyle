@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { seed } from './seed';
 
-const DB_PATH = process.env.VINYLE_DB ?? path.join(process.cwd(), 'data', 'vinyle.db');
+export const DB_PATH = process.env.VINYLE_DB ?? path.join(process.cwd(), 'data', 'vinyle.db');
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -95,9 +95,30 @@ function migrate(db: Database.Database) {
     (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === col);
   if (!has('albums', 'discogs_master_id')) db.exec('ALTER TABLE albums ADD COLUMN discogs_master_id INTEGER');
   if (!has('releases', 'discogs_release_id')) db.exec('ALTER TABLE releases ADD COLUMN discogs_release_id INTEGER');
+  // Konto: mail (potwierdzany linkiem), data urodzenia, profil. Starsze konta nie mają maila i logują się jak dotąd.
+  for (const [col, type] of [
+    ['email', 'TEXT COLLATE NOCASE'],
+    ['email_verified_at', 'TEXT'],
+    ['birth_date', 'TEXT'],
+    ['avatar', 'TEXT'],
+    ['bio', 'TEXT'],
+  ] as const) {
+    if (!has('users', col)) db.exec(`ALTER TABLE users ADD COLUMN ${col} ${type}`);
+  }
   db.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_albums_discogs ON albums(discogs_master_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_releases_discogs ON releases(discogs_release_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    -- Jednorazowe linki z maili (potwierdzenie adresu, reset hasła); w bazie tylko hash tokenu
+    CREATE TABLE IF NOT EXISTS email_tokens (
+      token_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      purpose TEXT NOT NULL CHECK (purpose IN ('verify', 'reset')),
+      email TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      expires_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_email_tokens_user ON email_tokens(user_id, purpose);
     CREATE TABLE IF NOT EXISTS import_jobs (
       id INTEGER PRIMARY KEY,
       params TEXT NOT NULL,

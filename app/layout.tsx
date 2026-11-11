@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { currentUser, isAdmin } from '@/lib/auth';
+import { Avatar } from '@/components/Avatar';
 import { logout } from './actions';
 import './globals.css';
 
@@ -32,6 +33,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/polka">Moja półka</Link>
                   {isAdmin(user) && <Link href="/admin/import">Import</Link>}
                   <Link href="/dodaj" className="btn btn-small">+ Dodaj płytę</Link>
+                  <Link href="/profil" className="who" title="Mój profil">
+                    <Avatar username={user.username} avatar={user.avatar} size={30} />
+                  </Link>
                   <form action={logout}>
                     <button className="linkish" title={`Zalogowany jako ${user.username}`}>Wyloguj</button>
                   </form>

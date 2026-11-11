@@ -29,7 +29,9 @@ Produkcyjnie: `npm run build && npm start`.
 | `/u/[nazwa]` | publiczna półka użytkownika z zakładkami Mam / Chcę kupić / Słuchałem / Ocenione |
 | `/polka` | skrót do własnej półki |
 | `/dodaj` | dodanie nowego albumu (wykonawca, gatunki, okładka, utwory) |
-| `/logowanie`, `/rejestracja` | konta (hasła hashowane scryptem, sesja w ciasteczku httpOnly) |
+| `/logowanie`, `/rejestracja` | konta (hasła hashowane scryptem, sesja w ciasteczku httpOnly); rejestracja z mailem, datą urodzenia (min. 16 lat) i linkiem potwierdzającym |
+| `/haslo` | reset hasła linkiem z maila |
+| `/profil` | zdjęcie profilowe, opis „O mnie”, zmiana maila i hasła |
 
 Model danych (`lib/db.ts`):
 
@@ -73,3 +75,16 @@ Zmienne środowiskowe:
 - `ADMIN_USERS` – nazwy użytkowników z dostępem do panelu, po przecinku
 
 Import działa w tle w procesie serwera (ok. 60 zapytań na minutę, 2 na płytę). Restart serwera, np. nowe wdrożenie, przerywa trwający import.
+
+## Konta i maile
+
+Rejestracja wymaga maila i daty urodzenia (minimum 16 lat, `MIN_AGE` w `lib/account.ts`). Konto działa po kliknięciu
+linku z maila. Konta założone przed tą zmianą nie mają maila i logują się jak dotąd; mail mogą dodać w `/profil`.
+
+Maile wychodzą przez [Resend](https://resend.com). Zmienne środowiskowe:
+
+- `RESEND_API_KEY` – klucz API z Resend (bez niego treść maili z linkami trafia tylko do logów serwera)
+- `MAIL_FROM` – nadawca, np. `Vinyle <konto@mojevinyle.pl>`; domena musi być zweryfikowana w Resend
+- `APP_URL` – adres strony w linkach, np. `https://mojevinyle.pl` (domyślnie adres, pod którym przyszło żądanie)
+
+Zdjęcia profilowe (JPG/PNG/WebP/GIF do 2 MB) leżą na trwałym dysku obok bazy, w `/data/avatars`.

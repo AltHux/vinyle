@@ -212,3 +212,18 @@ details[open] summary { margin-bottom: 12px; }
 .genre-covers { display: grid; grid-template-columns: repeat(2, 36px); gap: 4px; flex: none; }
 .genre-covers .cover { font-size: 0; box-shadow: none; }
 .genre-card strong { font-family: var(--serif); font-size: 1.15rem; display: block; }
+
+/* Konto i profil */
+.ok { color: #166534; background: #dcfce7; border-radius: 8px; padding: 8px 12px; font-size: .9rem; }
+@media (prefers-color-scheme: dark) { .ok { color: #bbf7d0; background: #052e16; } }
+.hint { display: block; font-size: .8rem; color: var(--muted); margin-top: 4px; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: .9rem; margin: 4px 0 14px; }
+.check input { width: auto; margin-top: 3px; }
+.check a { color: var(--accent); }
+.avatar { border-radius: 50%; object-fit: cover; flex: none; display: inline-block; vertical-align: middle; background: var(--line); }
+.avatar-gen { display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-family: var(--serif); }
+.who { display: inline-flex; align-items: center; gap: 8px; }
+.profile-head { display: flex; gap: 20px; align-items: center; }
+.user-head { margin-bottom: 20px; }
+.bio { margin: 8px 0 0; white-space: pre-wrap; max-width: 65ch; }
+input[type=file] { padding: 6px; }
