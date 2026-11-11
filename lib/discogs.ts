@@ -63,18 +63,27 @@ type Version = {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function api<T>(path: string, attempt = 0): Promise<T> {
-  const token = process.env.DISCOGS_TOKEN;
+  const token = process.env.DISCOGS_TOKEN?.trim();
   if (!token) throw new Error('Brak zmiennej DISCOGS_TOKEN na serwerze.');
   await sleep(DELAY_MS);
-  const res = await fetch(API + path, {
-    headers: { Authorization: `Discogs token=${token}`, 'User-Agent': 'VinyleApp/1.0 +https://vinyle.onrender.com' },
-  });
+  let res: Response;
+  try {
+    res = await fetch(API + path, {
+      headers: { Authorization: `Discogs token=${token}`, 'User-Agent': 'VinyleApp/1.0 +https://vinyle.onrender.com' },
+    });
+  } catch (e) {
+    const cause = (e as { cause?: { message?: string } }).cause?.message;
+    throw new Error(`Brak połączenia z Discogs: ${cause ?? (e as Error).message}`);
+  }
   if (res.status === 429 && attempt < 3) {
     await sleep(60_000);
     return api(path, attempt + 1);
   }
   if (res.status === 401) throw new Error('Discogs odrzucił token (401). Sprawdź DISCOGS_TOKEN.');
-  if (!res.ok) throw new Error(`Discogs ${res.status} dla ${path}`);
+  if (!res.ok) {
+    const body = (await res.text().catch(() => '')).slice(0, 200);
+    throw new Error(`Discogs ${res.status} dla ${path}${body ? `: ${body}` : ''}`);
+  }
   return res.json() as Promise<T>;
 }
 
